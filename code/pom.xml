@@ -1,0 +1,149 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.secken.proxy</groupId>
+	<artifactId>ldapproxy</artifactId>
+	<version>0.0.1</version>
+	<packaging>jar</packaging>
+
+	<name>ldapproxy</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>forgerock-staging-repository</id>
+			<name>ForgeRock Release Repository</name>
+			<url>http://maven.forgerock.org/repo/releases</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+		<repository>
+			<id>forgerock-snapshots-repository</id>
+			<name>ForgeRock Snapshot Repository</name>
+			<url>http://maven.forgerock.org/repo/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>3.8.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.forgerock.opendj</groupId>
+			<artifactId>opendj-ldap-sdk</artifactId>
+			<version>3.0.0-SNAPSHOT</version>
+			<type>pom</type>
+		</dependency>
+		<dependency>
+			<groupId>net.sf.json-lib</groupId>
+			<artifactId>json-lib</artifactId>
+			<version>2.2.3</version>
+			<classifier>jdk15</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.5</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.14</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.3</version>
+				<configuration>
+					<appendAssemblyId>false</appendAssemblyId>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<archive>
+						<manifest>
+							<mainClass>org.secken.proxy.ldapproxy.Main</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>assembly</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<tasks>
+								<mkdir dir="${project.build.directory}/ldapproxy/" />
+								<mkdir dir="${project.build.directory}/ldapproxy/version" />
+								<touch
+									file="${project.build.directory}/ldapproxy/version/${project.version}" />
+								<mkdir dir="${project.build.directory}/ldapproxy/bin" />
+								<mkdir dir="${project.build.directory}/ldapproxy/conf" />
+								<mkdir dir="${project.build.directory}/ldapproxy/certs" />
+								<mkdir dir="${project.build.directory}/ldapproxy/logs" />
+								<mkdir dir="${project.build.directory}/ldapproxy/var/run" />
+								<copy file="${basedir}/resource/ldapproxy.sh"
+									tofile="${project.build.directory}/ldapproxy/ldapproxy.sh"
+									overwrite="true" />
+								<chmod file="${project.build.directory}/ldapproxy/proxy.sh"
+									perm="u+x" failonerror="no" />
+								<copy file="${basedir}/resource/ldapproxy.bat"
+									tofile="${project.build.directory}/ldapproxy/ldapproxy.bat"
+									overwrite="true" failonerror="no" />
+								<copy file="${basedir}/resource/secken-default.conf"
+									tofile="${project.build.directory}/ldapproxy/conf/secken-default.conf"
+									overwrite="true" />
+								<copy
+									file="${project.build.directory}/${project.build.finalName}.${project.packaging}"
+									tofile="${project.build.directory}/ldapproxy/bin/${project.artifactId}.${project.packaging}"
+									overwrite="true" />
+							</tasks>
+						</configuration>
+					</execution>
+				</executions>
+
+			</plugin>
+
+
+		</plugins>
+	</build>
+
+	<organization>
+		<name>secken.Inc</name>
+		<url>www.yangcong.com</url>
+	</organization>
+
+</project>

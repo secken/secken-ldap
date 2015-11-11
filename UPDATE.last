@@ -1,0 +1,8 @@
+Secken ldapproxy Update Log 
+ 
+ldapproxy 0.0.1 Release	(2015/11/11)	BASELINE
+	support ldap bind search proxy 
+	support basic yangcong authenticate
+	support TLS do not verify Client & AuthServer 
+	support SASL DIGEST-MD5 bind request proxy
+	support SASL PLAIN bind request proxy

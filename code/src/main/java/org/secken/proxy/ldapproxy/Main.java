@@ -13,7 +13,7 @@ public class Main {
 
 	private static void initLog4j(String path, SeckenConfig conf) throws IOException {
 		Logger rootLogger = LogManager.getRootLogger();
-		PatternLayout p = new PatternLayout("%-d{yyyy-MM-dd HH:mm:ss} - [%t] : [%p] %m%n");
+		PatternLayout p = new PatternLayout("%-d{yyyy-MM-dd HH:mm:ss} - [%p] : %m%n");
 		FileAppender fa = new FileAppender(p, path + "/logs/ldapproxy.log");
 		rootLogger.addAppender(fa);
 

@@ -82,3 +82,5 @@ Introduction
 		keytool -export -alias server -file server.cert -keystore server.keystore  
 
 	* 更多关于keystore文件的信息请查询keystore文件或keytool命令 *
+	
+七、更加详尽的文档请查阅docs/赛肯内网ldap代理配置指南.docx

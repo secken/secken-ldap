@@ -19,20 +19,25 @@ import org.forgerock.opendj.ldap.ServerConnectionFactory;
 import org.forgerock.opendj.ldap.TrustManagers;
 import org.secken.proxy.auth.SeckenAuthFactory;
 import org.secken.proxy.config.SeckenConfig;
+import org.secken.proxy.config.SeckenConfig.AuthType;
 
 public class LDAPProxyConnectionFactory implements ServerConnectionFactory<LDAPClientContext, Integer> {
 
 	private boolean enableTLS = false;
 	private SSLContext serverSSLContext;
-	private LDAPConnectionFactory authServerConnectionfactory;
+	private LDAPConnectionFactory authServerCf;
 	private SeckenAuthFactory authFacotry;
+	private boolean wantClientAuth = false;
+	private boolean needClientAuth = false;
+	private AuthType authType;
 
 	private Logger logger = Logger.getLogger(LDAPProxyConnectionFactory.class);
 
 	LDAPProxyConnectionFactory(SeckenConfig conf, LDAPConnectionFactory authServerConnectionfactory,
 			SeckenAuthFactory authFacotry) throws Exception {
-		this.authServerConnectionfactory = authServerConnectionfactory;
+		this.authServerCf = authServerConnectionfactory;
 		this.authFacotry = authFacotry;
+		this.authType = conf.authType;
 
 		this.enableTLS = conf.ProxyTLS;
 		if (this.enableTLS == true) {
@@ -44,12 +49,12 @@ public class LDAPProxyConnectionFactory implements ServerConnectionFactory<LDAPC
 
 	public ServerConnection<Integer> handleAccept(LDAPClientContext clientContext) {
 		if (this.enableTLS == true) {
-			clientContext.enableTLS(serverSSLContext, null, null, false, false);
+			clientContext.enableTLS(serverSSLContext, null, null, wantClientAuth, needClientAuth);
 		}
 
 		try {
 			logger.debug("Connection from: " + clientContext.getPeerAddress() + " TLSenable:" + this.enableTLS);
-			return new LDAPProxyConnection(clientContext, this.authServerConnectionfactory, this.authFacotry);
+			return new LDAPProxyConnection(clientContext, this.authServerCf, this.authFacotry, this.authType);
 		} catch (LdapException e) {
 			logger.error(e.getMessage(), e);
 			return null;
@@ -77,20 +82,24 @@ public class LDAPProxyConnectionFactory implements ServerConnectionFactory<LDAPC
 		KeyManager keyManager = KeyManagers.useSingleCertificate(conf.ProxyCertAlias, x509KeyManager);
 
 		X509TrustManager trustManager = null;
-		if (conf.ProxyVerifyClient == true) {
-			logger.error("ProxyVerifyClient not supported yet, please remove ProxyVerifyClient in config file");
+		if (conf.VerifyClient == true) {
+			logger.error("VerifyClient does not support yet, please remove it from config file.");
 			return null;
-			// trustManager.checkClientTrusted(chain, authType);
-			// TrustManagers.checkUsingTrustStore(file, password, format);
-			// trustManager.checkClientTrusted(chain, authType);
+			// try {
+			// trustManager =
+			// TrustManagers.checkUsingTrustStore(conf.ClientCertFile,
+			// "123456".toCharArray(), null);
+			// TrustManagers.checkValidityDates(trustManager);
+			// } catch (GeneralSecurityException e) {
+			// e.printStackTrace();
+			// } catch (IOException e) {
+			// e.printStackTrace();
+			// }
 		} else {
 			trustManager = TrustManagers.trustAll();
 		}
 
-		SSLContextBuilder builder = new SSLContextBuilder();
-		builder = builder.setKeyManager(keyManager);
-		builder = builder.setTrustManager(trustManager);
-
+		SSLContextBuilder builder = new SSLContextBuilder().setKeyManager(keyManager).setTrustManager(trustManager);
 		try {
 			SSLContext = builder.getSSLContext();
 		} catch (GeneralSecurityException e) {

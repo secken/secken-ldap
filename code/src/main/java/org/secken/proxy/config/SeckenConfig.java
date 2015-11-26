@@ -15,7 +15,8 @@ public class SeckenConfig {
 	public String ProxyKeyStoreFile;
 	public String ProxyKeyStorePassword;
 	public String ProxyCertAlias;
-	public boolean ProxyVerifyClient = false;
+	public boolean VerifyClient = false;
+	public String ClientCertFile;
 
 	public String RealTimeAuthURL;
 	public String GetEventResultURL;
@@ -23,6 +24,12 @@ public class SeckenConfig {
 	public String PowerKey;
 	public int timeOut;
 	public int interval;
+
+	public enum AuthType {
+		DOUBUEL_AUTH, SERVER_AUTH, SECKEN_AUTH;
+	}
+
+	public AuthType authType = AuthType.DOUBUEL_AUTH;
 
 	public String ProxyClientAddr;
 	public int ProxyClientPort;
@@ -78,23 +85,26 @@ public class SeckenConfig {
 									+ filePath + "'.");
 				}
 
-				if (null != p.getProperty("ProxyVerifyClient") || !"".equals(p.getProperty("ProxyVerifyClient"))) {
-					if ("yes".equals(p.getProperty("ProxyVerifyClient"))) {
-						this.ProxyVerifyClient = true;
-					} else if ("no".equals(p.getProperty("ProxyVerifyClient"))) {
-						this.ProxyVerifyClient = false;
+				if (null != p.getProperty("VerifyClient") || !"".equals(p.getProperty("VerifyClient"))) {
+					if ("yes".equals(p.getProperty("VerifyClient"))) {
+						this.VerifyClient = true;
+					} else if ("no".equals(p.getProperty("VerifyClient"))) {
+						this.VerifyClient = false;
 					} else {
 						throw new Exception(
-								"if you want verify client, please specify the 'ProxyVerifyClient=yes/no' in config file '"
+								"if you want verify client, option 'VerifyClient' must be '(yes|no)' in config file '"
 										+ filePath + "'.");
 					}
+				}
+
+				if (p.getProperty("ClientCertFile") != null || !"".equals(p.getProperty("ClientCertFile"))) {
+					this.ClientCertFile = p.getProperty("ClientCertFile");
 				}
 
 			} else if ("no".equals(p.getProperty("ProxyTLS"))) {
 				this.ProxyTLS = false;
 			} else {
-				throw new Exception(
-						"config option 'ProxyTLS' must be 'yes' or 'no' in config file '" + filePath + "'.");
+				throw new Exception("config option 'ProxyTLS' must be (yes|no) in config file '" + filePath + "'.");
 			}
 		}
 
@@ -128,6 +138,18 @@ public class SeckenConfig {
 		} else {
 			this.interval = Integer.parseInt(p.getProperty("interval"));
 		}
+		if (p.getProperty("auth_type") != null && !"".equals(p.getProperty("auth_type"))) {
+			if ("double".equals(p.getProperty("auth_type"))) {
+				this.authType = AuthType.DOUBUEL_AUTH;
+			} else if ("serveronly".equals(p.getProperty("auth_type"))) {
+				this.authType = AuthType.SERVER_AUTH;
+			} else if ("seckenonly".equals(p.getProperty("auth_type"))) {
+				this.authType = AuthType.SECKEN_AUTH;
+			} else {
+				throw new Exception(
+						"config option 'auth_type' must be '(double|serveronly|seckenonly)' in config file '" + filePath + "'.");
+			}
+		}
 
 		this.ProxyClientAddr = p.getProperty("AuthServerAddr");
 		if (this.ProxyClientAddr == null || "".equals(this.ProxyClientAddr)) {
@@ -146,8 +168,7 @@ public class SeckenConfig {
 			} else if ("no".equals(p.getProperty("AuthServerTLS"))) {
 				this.ProxyClientTLS = false;
 			} else {
-				throw new Exception("config option 'AuthServerTLS' must be 'yes' or 'no' (default 'no') in config  '"
-						+ filePath + "'.");
+				throw new Exception("config option 'AuthServerTLS' must be '(yes|no)' in config  '" + filePath + "'.");
 			}
 		}
 	}

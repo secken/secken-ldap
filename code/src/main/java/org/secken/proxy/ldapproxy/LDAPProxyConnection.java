@@ -23,49 +23,84 @@ import org.forgerock.opendj.ldap.requests.UnbindRequest;
 import org.forgerock.opendj.ldap.responses.BindResult;
 import org.forgerock.opendj.ldap.responses.CompareResult;
 import org.forgerock.opendj.ldap.responses.ExtendedResult;
+import org.forgerock.opendj.ldap.responses.Responses;
 import org.forgerock.opendj.ldap.responses.Result;
 import org.forgerock.util.promise.Promise;
 import org.forgerock.util.promise.ResultHandler;
 import org.secken.proxy.auth.SeckenAuthFactory;
+import org.secken.proxy.config.SeckenConfig.AuthType;
 
 public class LDAPProxyConnection implements ServerConnection<Integer> {
 
-	SeckenAuthFactory authFacotry;
-	Connection connection;
+	private SeckenAuthFactory authFacotry;
+	private Connection connection;
 	private final LDAPClientContext clientContext;
+	private AuthType authType;
+	private boolean seckenAuthEnable = true;
+	private boolean authServerEnable = false;
+
 	// private SaslServer saslServer;
 
 	Logger logger = Logger.getLogger(LDAPProxyConnection.class);
 
-	LDAPProxyConnection(LDAPClientContext clientContext, ConnectionFactory factory, SeckenAuthFactory authFacotry)
-			throws LdapException {
+	LDAPProxyConnection(LDAPClientContext clientContext, ConnectionFactory factory, SeckenAuthFactory authFacotry,
+			AuthType authType) throws LdapException {
 		this.clientContext = clientContext;
 		this.connection = factory.getConnection();
 		this.authFacotry = authFacotry;
+		this.authType = authType;
+	}
+
+	private class SeckenResultHandler implements ResultHandler<BindResult> {
+		LdapResultHandler<BindResult> resultHandler;
+		String username;
+
+		SeckenResultHandler(LdapResultHandler<BindResult> resultHandler, String username) {
+			this.resultHandler = resultHandler;
+			this.username = username;
+		}
+
+		public final void handleResult(final BindResult result) {
+
+			if (result.getResultCode() == ResultCode.SASL_BIND_IN_PROGRESS) {
+				resultHandler.handleResult(result);
+			} else {
+				LDAPProxySendResult sendResult = new LDAPProxySendResult(result, resultHandler);
+				authFacotry.StartAuth(username, sendResult);
+			}
+		}
 	}
 
 	public void handleBind(Integer messageID, int version, final BindRequest request,
 			IntermediateResponseHandler IntermediateResponseHandler,
 			final LdapResultHandler<BindResult> resultHandler) {
-		logger.debug("proxyFactory handleBind" + request);
 
-		Promise<BindResult, LdapException> promise = connection.bindAsync(request);
-		promise.thenOnResult(new ResultHandler<BindResult>() {
+		final String name = (request.getName().split(","))[0].split("=")[1];
 
-			public final void handleResult(final BindResult result) {
+		switch (this.authType) {
+		case DOUBUEL_AUTH: {
+			logger.info("auth type is double auth. [" + request.getName() + "] auth forword to auth server.");
+			SeckenResultHandler srHandler = new SeckenResultHandler(resultHandler, name);
+			connection.bindAsync(request).thenOnResult(srHandler).thenOnException(resultHandler);
+			break;
+		}
+		case SERVER_AUTH: {
+			logger.info("auth type is server auth. [" + request.getName() + "] auth forword to auth server.");
+			connection.bindAsync(request).thenOnResult(resultHandler).thenOnException(resultHandler);
+			break;
+		}
+		case SECKEN_AUTH: {
+			logger.info("auth type is secken auth , [" + request.getName() + "] will auth in secken.");
 
-				if (result.getResultCode() == ResultCode.SASL_BIND_IN_PROGRESS) {
-					resultHandler.handleResult(result);
-				} else {
-					LDAPProxySendResult sendResult = new LDAPProxySendResult(result, resultHandler);
-
-					String dn[] = request.getName().split(",");
-					String name[] = dn[0].split("=");
-
-					authFacotry.StartAuth(name[1], sendResult);
-				}
-			}
-		}).thenOnException(resultHandler);
+			SeckenResultHandler srHandler = new SeckenResultHandler(resultHandler, name);
+			srHandler.handleResult(Responses.newBindResult(ResultCode.SUCCESS));
+			break;
+		}
+		default :{
+			logger.info("error auth type, give auth this time.");
+			break;
+		}
+		}
 	}
 
 	public void handleSearch(Integer messageID, SearchRequest request,
@@ -115,22 +150,16 @@ public class LDAPProxyConnection implements ServerConnection<Integer> {
 	}
 
 	public void handleConnectionClosed(Integer arg0, UnbindRequest unbindRequest) {
-		// final LocalizableMessage cancelReason =
-		// INFO_CANCELED_BY_CLIENT_DISCONNECT.get();
 		logger.debug("Connecction from " + clientContext.getPeerAddress() + " closed.");
 		connection.close();
 	}
 
 	public void handleConnectionDisconnected(ResultCode arg0, String arg1) {
-		// final LocalizableMessage cancelReason =
-		// INFO_CANCELED_BY_CLIENT_DISCONNECT.get();
 		logger.debug("Connecction from " + clientContext.getPeerAddress() + " disconnected.");
 		connection.close();
 	}
 
 	public void handleConnectionError(Throwable arg0) {
-		// final LocalizableMessage cancelReason =
-		// INFO_CANCELED_BY_CLIENT_ERROR.get();
 		logger.debug("Connecction from " + clientContext.getPeerAddress() + " error.");
 		connection.close();
 	}

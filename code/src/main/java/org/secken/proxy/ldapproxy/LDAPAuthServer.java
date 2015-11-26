@@ -1,7 +1,6 @@
 package org.secken.proxy.ldapproxy;
 
 import static org.forgerock.opendj.ldap.LDAPConnectionFactory.SSL_CONTEXT;
-import static org.forgerock.opendj.ldap.LDAPConnectionFactory.USE_STARTTLS;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -93,7 +92,7 @@ public class LDAPAuthServer {
 			options.set(SSL_CONTEXT, sslContext);
 		}
 
-		options.set(USE_STARTTLS, false);
+//		options.set(USE_STARTTLS, false);
 
 		return options;
 	}
